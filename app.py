@@ -11,41 +11,83 @@ import simpleOSC
 motorSpeed = 200
 receiveAddress = "0.0.0.0"
 receivePort = 8000
+dremelJointSpeedMin = 100
+dremelJointSpeedMax = 1024
+dremelJointPosMax = 100 # use symmetrically for min and max
+wheelSpeedMax = 1024 # use symmetrically for min and max
+wheelSlowdownMax = 1 # %, in range 0-1
+leftWheelMotorId = 3
+rightWheelMotorId = 2
+dremelMotorId = 4
 
 # Global variables
-global dxlIO, foundIds, wheelSpeed, wheelOffset, dremelJointAngle, dremelJointSpeed
+wheelSpeed = 0
+leftWheelSlowdown = 0
+rightWheelSlowdown = 0
 
 def wheelSpeedHandler(addr, tags, data, source):
-    # if midi.isController():
-    global dxlIO, foundIds
+    global dxlIO, wheelSpeedMax, wheelSpeed
     cc = data[0] + 0.0
     if cc == 0:
         cc = 1; # Fix problem with non-symmetrical values
-    pos = (cc - 64)/64 * 100
-    print cc, pos
-    dxlIO.set_goal_position(dict(zip(foundIds, itertools.repeat(pos))))
-    
+    wheelSpeed = (cc - 64)/64 * wheelSpeedMax
+    updateWheelSpeeds()
+
+def wheelSlowdownHandler(addr, tags, data, source):
+    global dxlIO, wheelSlowdownMax, leftWheelSlowdown, rightWheelSlowdown
+    cc = data[0] + 0.0
+    if cc == 0:
+        cc = 1; # Fix problem with non-symmetrical values
+    slowdown = (cc - 64)/64 * wheelSlowdownMax
+    if slowdown > 0:
+        leftWheelSlowdown = slowdown
+        rightWheelSlowdown = 0
+    else:
+        leftWheelSlowdown = 0
+        rightWheelSlowdown = -slowdown
+    updateWheelSpeeds()
+
+def dremelJointPosHandler(addr, tags, data, source):
+    global dxlIO, dremelJointPosMax, dremelMotorId
+    cc = data[0] + 0.0
+    if cc == 0:
+        cc = 1; # Fix problem with non-symmetrical values
+    pos = (cc - 64)/64 * dremelJointPosMax
+    dxlIO.set_goal_position({dremelMotorId: pos})
+
+def dremelJointSpeedHandler(addr, tags, data, source):
+    global dxlIO, dremelJointSpeedMin, dremelJointSpeedMax, dremelMotorId
+    cc = data[0] + 0.0
+    speed = cc/127 * (dremelJointSpeedMax - dremelJointSpeedMin) + dremelJointSpeedMin
+    dxlIO.set_moving_speed({dremelMotorId: speed})
+
+def updateWheelSpeeds():
+    global wheelSpeed, leftWheelSlowdown, rightWheelSlowdown, leftWheelMotorId, rightWheelMotorId
+    leftWheelSpeed = wheelSpeed * (1 - leftWheelSlowdown)
+    rightWheelSpeed = -wheelSpeed * (1 - rightWheelSlowdown)
+    dxlIO.set_moving_speed({leftWheelMotorId: leftWheelSpeed, rightWheelMotorId: rightWheelSpeed})
+
+
 def app():
     # Init Dynamixel connection
     global dxlIO, foundIds
     ports = pypot.dynamixel.get_available_ports()
-    print 'available ports:', ports
     if not ports:
         raise IOError('No port available.')
     port = ports[0]
-    print 'Using the first on the list', port
     dxlIO = pypot.dynamixel.DxlIO(port)
-    print 'Connected!'
-    foundIds = dxlIO.scan()
-    print 'Found ids:', foundIds
+    print 'Connected'
     # Setup motors
-    dxlIO.enable_torque(foundIds)
-    dxlIO.set_moving_speed(dict(zip(foundIds, itertools.repeat(motorSpeed))))
+    dxlIO.enable_torque([leftWheelMotorId, rightWheelMotorId, dremelMotorId])
+    dxlIO.set_moving_speed({dremelMotorId: dremelJointSpeedMin})
     # Init OSC server
     simpleOSC.initOSCServer(receiveAddress, receivePort)
     simpleOSC.setOSCHandler('/wheelspeed', wheelSpeedHandler)
+    simpleOSC.setOSCHandler('/wheelslowdown', wheelSlowdownHandler)
+    simpleOSC.setOSCHandler('/dremeljointpos', dremelJointPosHandler)
+    simpleOSC.setOSCHandler('/dremeljointspeed', dremelJointSpeedHandler)
     simpleOSC.startOSCServer()
-        # Enter infinite loop to be able to catch KeyboardInterrupt
+    # Enter infinite loop to be able to catch KeyboardInterrupt
     try:
         while True:
             time.sleep(0)
