@@ -1,5 +1,4 @@
 import sys
-import rtmidi
 import threading
 import itertools
 import numpy
