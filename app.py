@@ -27,40 +27,26 @@ def wheelSpeedHandler(addr, tags, data, source):
     print "typetags :%s" % tags
     print "the actual data is : %s" % data
 
-class Collector(threading.Thread):
-    def __init__(self):
-        threading.Thread.__init__(self)
-        self.setDaemon(True)
-        self.quit = False
+def app():
+    # Init Dynamixel connection
+    global dxlIO, foundIds
+    ports = pypot.dynamixel.get_available_ports()
+    print 'available ports:', ports
+    if not ports:
+        raise IOError('No port available.')
+    port = ports[0]
+    print 'Using the first on the list', port
+    dxlIO = pypot.dynamixel.DxlIO(port)
+    print 'Connected!'
+    foundIds = dxlIO.scan()
+    print 'Found ids:', foundIds
+    # Setup motors
+    dxlIO.enable_torque(foundIds)
+    dxlIO.set_moving_speed(dict(zip(foundIds, itertools.repeat(motorSpeed))))
+    # Init OSC server
+    simpleOSC.initOSCServer(receiveAddress, receivePort)
+    simpleOSC.setOSCHandler('/wheelspeed', wheelSpeedHandler)
+    simpleOSC.startOSCServer()
 
-    def run(self):
-        while True:
-            if self.quit:
-                return
-
-# Init Dynamixel connection
-global dxlIO, foundIds
-ports = pypot.dynamixel.get_available_ports()
-print 'available ports:', ports
-if not ports:
-    raise IOError('No port available.')
-port = ports[0]
-print 'Using the first on the list', port
-dxlIO = pypot.dynamixel.DxlIO(port)
-print 'Connected!'
-foundIds = dxlIO.scan()
-print 'Found ids:', foundIds
-# Setup motors
-dxlIO.enable_torque(foundIds)
-dxlIO.set_moving_speed(dict(zip(foundIds, itertools.repeat(motorSpeed))))
-# Init OSC server
-simpleOSC.initOSCServer(receiveAddress, receivePort)
-simpleOSC.setOSCHandler('/wheelspeed', wheelSpeedHandler)
-simpleOSC.startOSCServer()
-# Init collector (allows to quit app by pressing enter key)
-collector = Collector()
-collector.start()
-
-print 'HIT ENTER TO EXIT'
-sys.stdin.read(1)
-collector.quit = True
+# Launch the app
+if __name__ == '__main__': app()
