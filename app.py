@@ -37,7 +37,7 @@ class Collector(threading.Thread):
 
     def run(self):
         simpleOSC.initOSCServer(self.address, self.port)
-        simpleOSC.setOSCHandler('wheelspeed', wheelSpeedHandler)
+        simpleOSC.setOSCHandler('/wheelspeed', wheelSpeedHandler)
         simpleOSC.startOSCServer()
         while True:
             if self.quit:
