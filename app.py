@@ -8,7 +8,7 @@ import OSC
 import simpleOSC
 
 # Settings
-motorSpeed = 1023
+motorSpeed = 200
 receiveAddress = "0.0.0.0"
 receivePort = 8000
 
@@ -18,9 +18,11 @@ global dxlIO, foundIds, wheelSpeed, wheelOffset, dremelJointAngle, dremelJointSp
 def wheelSpeedHandler(addr, tags, data, source):
     # if midi.isController():
     global dxlIO, foundIds
-    if data == 0:
-        data = 1; # Fix problem with non-symmetrical values
-    pos = (data - 64)/64 * 150
+    cc = data[0] + 0.0
+    if cc == 0:
+        cc = 1; # Fix problem with non-symmetrical values
+    pos = (cc - 64)/64 * 100
+    print cc, pos
     dxlIO.set_goal_position(dict(zip(foundIds, itertools.repeat(pos))))
     
 def app():
