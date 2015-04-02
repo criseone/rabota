@@ -28,17 +28,12 @@ def wheelSpeedHandler(addr, tags, data, source):
     print "the actual data is : %s" % data
 
 class Collector(threading.Thread):
-    def __init__(self, address, port):
+    def __init__(self):
         threading.Thread.__init__(self)
         self.setDaemon(True)
-        self.address = address
-        self.port = port
         self.quit = False
 
     def run(self):
-        simpleOSC.initOSCServer(self.address, self.port)
-        simpleOSC.setOSCHandler('/wheelspeed', wheelSpeedHandler)
-        simpleOSC.startOSCServer()
         while True:
             if self.quit:
                 return
@@ -58,8 +53,12 @@ print 'Found ids:', foundIds
 # Setup motors
 dxlIO.enable_torque(foundIds)
 dxlIO.set_moving_speed(dict(zip(foundIds, itertools.repeat(motorSpeed))))
-# Init osc collector
-collector = Collector(receiveAddress, receivePort)
+# Init OSC server
+simpleOSC.initOSCServer(receiveAddress, receivePort)
+simpleOSC.setOSCHandler('/wheelspeed', wheelSpeedHandler)
+simpleOSC.startOSCServer()
+# Init collector (allows to quit app by pressing enter key)
+collector = Collector()
 collector.start()
 
 print 'HIT ENTER TO EXIT'
