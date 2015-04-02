@@ -17,16 +17,12 @@ global dxlIO, foundIds, wheelSpeed, wheelOffset, dremelJointAngle, dremelJointSp
 
 def wheelSpeedHandler(addr, tags, data, source):
     # if midi.isController():
-    #     global dxlIO, foundIds
-    #     value = midi.getControllerValue()
-    #     print '%s: cc' % port, midi.getControllerNumber(), value
-    #     pos = (value - 63.5)/63.5 * 150
-    #     dxlIO.set_goal_position(dict(zip(foundIds, itertools.repeat(pos))))
-    print "received new osc msg from %s" % OSC.getUrlStr(source)
-    print "with addr : %s" % addr
-    print "typetags :%s" % tags
-    print "the actual data is : %s" % data
-
+    global dxlIO, foundIds
+    if data == 0:
+        data = 1; # Fix problem with non-symmetrical values
+    pos = (data - 64)/64 * 150
+    dxlIO.set_goal_position(dict(zip(foundIds, itertools.repeat(pos))))
+    
 def app():
     # Init Dynamixel connection
     global dxlIO, foundIds
@@ -52,7 +48,7 @@ def app():
         while True:
             time.sleep(0)
     except KeyboardInterrupt:
-        simpleOSC.closeOSC() # This crashes but at least closes the program
+        simpleOSC.closeOSC()
 
 # Launch the app
 if __name__ == '__main__': app()
