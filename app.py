@@ -47,6 +47,12 @@ def app():
     simpleOSC.initOSCServer(receiveAddress, receivePort)
     simpleOSC.setOSCHandler('/wheelspeed', wheelSpeedHandler)
     simpleOSC.startOSCServer()
+        # Enter infinite loop to be able to catch KeyboardInterrupt
+    try:
+        while True:
+            time.sleep(0)
+    except KeyboardInterrupt:
+        simpleOSC.closeOSC() # This crashes but at least closes the program
 
 # Launch the app
 if __name__ == '__main__': app()
