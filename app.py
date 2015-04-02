@@ -13,7 +13,8 @@ receiveAddress = "0.0.0.0"
 receivePort = 8000
 dremelJointSpeedMin = 100
 dremelJointSpeedMax = 1024
-dremelJointPosMax = 100 # use symmetrically for min and max
+dremelJointPosMin = 40
+dremelJointPosMax = 53
 wheelSpeedMax = 1024 # use symmetrically for min and max
 wheelSlowdownMax = 1 # %, in range 0-1
 leftWheelMotorId = 3
@@ -48,12 +49,10 @@ def wheelSlowdownHandler(addr, tags, data, source):
     updateWheelSpeeds()
 
 def dremelJointPosHandler(addr, tags, data, source):
-    global dxlIO, dremelJointPosMax, dremelMotorId
+    global dxlIO, dremelJointPosMin, dremelJointPosMax, dremelMotorId
     cc = data[0] + 0.0
-    if cc == 0:
-        cc = 1; # Fix problem with non-symmetrical values
-    pos = (cc - 64)/64 * dremelJointPosMax
-    dxlIO.set_goal_position({dremelMotorId: pos})
+    pos = cc/127 * (dremelJointPosMax - dremelJointPosMin) + dremelJointPosMin
+    dxlIO.set_goal_position({dremelMotorId: -pos})
 
 def dremelJointSpeedHandler(addr, tags, data, source):
     global dxlIO, dremelJointSpeedMin, dremelJointSpeedMax, dremelMotorId
