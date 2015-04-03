@@ -23,19 +23,19 @@ leftWheelSlowdown = 0
 rightWheelSlowdown = 0
 
 def wheelSpeedHandler(addr, tags, data, source):
-    global dxlIO, wheelSpeedMax, wheelSpeed
-    cc = data[0] + 0.0
-    if cc == 0:
-        cc = 1; # Fix problem with non-symmetrical values
-    wheelSpeed = (cc - 64)/64 * wheelSpeedMax
+    global wheelSpeedMax, wheelSpeed
+    value = data[0] + 0.0
+    if value == 0:
+        value = 1; # Fix problem with non-symmetrical values
+    wheelSpeed = (value - 64)/63 * wheelSpeedMax
     updateWheelSpeeds()
 
 def wheelSlowdownHandler(addr, tags, data, source):
-    global dxlIO, wheelSlowdownMax, leftWheelSlowdown, rightWheelSlowdown
-    cc = data[0] + 0.0
-    if cc == 0:
-        cc = 1; # Fix problem with non-symmetrical values
-    slowdown = (cc - 64)/64 * wheelSlowdownMax
+    global wheelSlowdownMax, leftWheelSlowdown, rightWheelSlowdown
+    value = data[0] + 0.0
+    if value == 0:
+        value = 1; # Fix problem with non-symmetrical values
+    slowdown = (value - 64)/63 * wheelSlowdownMax
     if slowdown > 0:
         leftWheelSlowdown = slowdown
         rightWheelSlowdown = 0
@@ -46,18 +46,18 @@ def wheelSlowdownHandler(addr, tags, data, source):
 
 def dremelJointPosHandler(addr, tags, data, source):
     global dxlIO, dremelJointPosMin, dremelJointPosMax, dremelMotorId
-    cc = data[0] + 0.0
-    pos = cc/127 * (dremelJointPosMax - dremelJointPosMin) + dremelJointPosMin
+    value = data[0] + 0.0
+    pos = value/127 * (dremelJointPosMax - dremelJointPosMin) + dremelJointPosMin
     dxlIO.set_goal_position({dremelMotorId: -pos})
 
 def dremelJointSpeedHandler(addr, tags, data, source):
     global dxlIO, dremelJointSpeedMin, dremelJointSpeedMax, dremelMotorId
-    cc = data[0] + 0.0
-    speed = cc/127 * (dremelJointSpeedMax - dremelJointSpeedMin) + dremelJointSpeedMin
+    value = data[0] + 0.0
+    speed = value/127 * (dremelJointSpeedMax - dremelJointSpeedMin) + dremelJointSpeedMin
     dxlIO.set_moving_speed({dremelMotorId: speed})
 
 def updateWheelSpeeds():
-    global wheelSpeed, leftWheelSlowdown, rightWheelSlowdown, leftWheelMotorId, rightWheelMotorId
+    global dxlIO, wheelSpeed, leftWheelSlowdown, rightWheelSlowdown, leftWheelMotorId, rightWheelMotorId
     leftWheelSpeed = wheelSpeed * (1 - leftWheelSlowdown)
     rightWheelSpeed = -wheelSpeed * (1 - rightWheelSlowdown)
     dxlIO.set_moving_speed({leftWheelMotorId: leftWheelSpeed, rightWheelMotorId: rightWheelSpeed})
