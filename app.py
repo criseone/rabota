@@ -1,6 +1,3 @@
-import sys
-import threading
-import itertools
 import numpy
 import time
 import pypot.dynamixel
@@ -8,7 +5,6 @@ import OSC
 import simpleOSC
 
 # Settings
-motorSpeed = 200
 receiveAddress = "0.0.0.0"
 receivePort = 8000
 dremelJointSpeedMin = 100
