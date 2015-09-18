@@ -56,6 +56,18 @@ def dremelJointSpeedHandler(addr, tags, data, source):
     speed = value/127 * (dremelJointSpeedMax - dremelJointSpeedMin) + dremelJointSpeedMin
     dxlIO.set_moving_speed({dremelMotorId: speed})
 
+def stopHandler(addr, tags, data, source):
+    dxlIO.set_moving_speed({leftWheelMotorId: 0, rightWheelMotorId : 0})
+
+def leftWheelSpeedHandler(addr, tags, data, source):
+    dxlIO.set_moving_speed({leftWheelMotorId: data[0]})
+
+def rightWheelSpeedHandler(addr, tags, data, source):
+    dxlIO.set_moving_speed({rightWheelMotorId: data[0]})
+
+
+
+
 def updateWheelSpeeds():
     global dxlIO, wheelSpeed, leftWheelSlowdown, rightWheelSlowdown, leftWheelMotorId, rightWheelMotorId
     leftWheelSpeed = wheelSpeed * (1 - leftWheelSlowdown)
@@ -71,16 +83,24 @@ def app():
         raise IOError('No port available.')
     port = ports[0]
     dxlIO = pypot.dynamixel.DxlIO(port)
-    print 'Connected'
+    print 'Connected DxLIO'
+    # print 'Found Motors with IDs: ' 
+    # print dxlIO.scan()
     # Setup motors
-    dxlIO.enable_torque([leftWheelMotorId, rightWheelMotorId, dremelMotorId])
-    dxlIO.set_moving_speed({dremelMotorId: dremelJointSpeedMin})
+    # dxlIO.enable_torque([leftWheelMotorId, rightWheelMotorId]) #, dremelMotorId])
+    dxlIO.enable_torque([leftWheelMotorId, rightWheelMotorId])
+    # dxlIO.set_moving_speed({dremelMotorId: dremelJointSpeedMin})
+    print 'Motors Set Up'
+
     # Init OSC server
     simpleOSC.initOSCServer(receiveAddress, receivePort)
     simpleOSC.setOSCHandler('/wheelspeed', wheelSpeedHandler)
+    simpleOSC.setOSCHandler('/rightwheelspeed', rightWheelSpeedHandler)
+    simpleOSC.setOSCHandler('/leftwheelspeed', leftWheelSpeedHandler)
     simpleOSC.setOSCHandler('/wheelslowdown', wheelSlowdownHandler)
     simpleOSC.setOSCHandler('/dremeljointpos', dremelJointPosHandler)
     simpleOSC.setOSCHandler('/dremeljointspeed', dremelJointSpeedHandler)
+    simpleOSC.setOSCHandler('/stop', stopHandler)
     simpleOSC.startOSCServer()
     # Enter infinite loop to be able to catch KeyboardInterrupt
     try:
