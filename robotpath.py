@@ -44,7 +44,7 @@ def stop():
     print('stop')
     process_message('/stop')
 
-with open('/mnt/data/data.txt') as inf:
+with open('/home/rabota/rabota/data.txt') as inf:
     for line in inf:
         line = line.strip()
         if line != '':
