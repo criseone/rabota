@@ -1,79 +1,65 @@
 import sys
-import threading
-import OSC
 import time
 import random
+from pythonosc import udp_client
 
 # Settings
-sendAdress = '0.0.0.0', 8000
+sendAddress = '0.0.0.0'
+sendPort = 8000
 stepTime = 1
 maxRandomTurnMultiplier = 2
 motorSpeed = 100
 leftWheelPolarity = 1
 rightWheelPolarity = 1
 
-
+client = udp_client.SimpleUDPClient(sendAddress, sendPort)
 
 def process_message(address, value=0):
-    message = OSC.OSCMessage()
-    message.setAddress(address)
-    message.append(value)
-    client.send(message)
+    client.send_message(address, value)
 
-
-def goForward():
-    print 'goForward'
+def go_forward():
+    print('goForward')
     process_message('/rightwheelspeed', motorSpeed * rightWheelPolarity)
     process_message('/leftwheelspeed', motorSpeed * leftWheelPolarity)
 
-
-def turnRight():
-    print 'turnRight'
+def turn_right():
+    print('turnRight')
     process_message('/rightwheelspeed', motorSpeed * -rightWheelPolarity)
     process_message('/leftwheelspeed', motorSpeed * leftWheelPolarity)
 
-def turnLeft():
-    print 'turnLeft'
+def turn_left():
+    print('turnLeft')
     process_message('/rightwheelspeed', motorSpeed * rightWheelPolarity)
     process_message('/leftwheelspeed', motorSpeed * -leftWheelPolarity)
 
-def randomTurn():
-    print 'randomTurn'
-    if (random.randint(0,1) == 0):
-        turnRight()
-    else: 
-        turnLeft()
-
-    time.sleep(random.random() * maxRandomTurnMultiplier);
+def random_turn():
+    print('randomTurn')
+    if random.randint(0, 1) == 0:
+        turn_right()
+    else:
+        turn_left()
+    time.sleep(random.random() * maxRandomTurnMultiplier)
 
 def stop():
-    print 'stop'
+    print('stop')
     process_message('/stop')
 
-
-# Init OSC client
-client = OSC.OSCClient()
-client.connect(sendAdress)
-
-
-
-with open('data.txt') as inf:
+with open('/mnt/data/data.txt') as inf:
     for line in inf:
         line = line.strip()
-	if (line != ''):
-	    print 'line read: ' + line
+        if line != '':
+            print('line read: ' + line)
             if line == 'f':
-                goForward()
+                go_forward()
             elif line == 'r':
-                turnRight()
+                turn_right()
             elif line == 'l':
-                turnLeft()
+                turn_left()
             elif line == 'm':
-                randomTurn()
+                random_turn()
             elif line == 's':
                 stop()
-    	    time.sleep(stepTime)
+            time.sleep(stepTime)
 
 stop()
-print 'DONE'
-
+print('DONE')

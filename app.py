@@ -1,8 +1,7 @@
 import numpy
 import time
 import pypot.dynamixel
-import OSC
-import simpleOSC
+from pythonosc import dispatcher, osc_server, udp_client
 
 # Settings
 receiveAddress = "0.0.0.0"
@@ -11,8 +10,8 @@ dremelJointSpeedMin = 100
 dremelJointSpeedMax = 1024
 dremelJointPosMin = 40
 dremelJointPosMax = 53
-wheelSpeedMax = 1024 # use symmetrically for min and max
-wheelSlowdownMax = 1 # %, in range 0-1
+wheelSpeedMax = 1024  # use symmetrically for min and max
+wheelSlowdownMax = 1  # %, in range 0-1
 leftWheelMotorId = 3
 rightWheelMotorId = 2
 dremelMotorId = 4
@@ -22,92 +21,87 @@ wheelSpeed = 0
 leftWheelSlowdown = 0
 rightWheelSlowdown = 0
 
-def wheelSpeedHandler(addr, tags, data, source):
-    global wheelSpeedMax, wheelSpeed
-    value = data[0] + 0.0
-    if value == 0:
-        value = 1; # Fix problem with non-symmetrical values
-    wheelSpeed = (value - 64)/63 * wheelSpeedMax
-    updateWheelSpeeds()
+def handle_sleep_data(address, *args):
+    # Process sleep data and control robot accordingly
+    print(f"Received sleep data: {args}")
+    # Implement your logic based on the sleep data
 
-def wheelSlowdownHandler(addr, tags, data, source):
-    global wheelSlowdownMax, leftWheelSlowdown, rightWheelSlowdown
-    value = data[0] + 0.0
+def wheel_speed_handler(address, *args):
+    global wheelSpeedMax, wheelSpeed
+    value = args[0] + 0.0
     if value == 0:
-        value = 1; # Fix problem with non-symmetrical values
-    slowdown = (value - 64)/63 * wheelSlowdownMax
+        value = 1  # Fix problem with non-symmetrical values
+    wheelSpeed = (value - 64) / 63 * wheelSpeedMax
+    update_wheel_speeds()
+
+def wheel_slowdown_handler(address, *args):
+    global wheelSlowdownMax, leftWheelSlowdown, rightWheelSlowdown
+    value = args[0] + 0.0
+    if value == 0:
+        value = 1  # Fix problem with non-symmetrical values
+    slowdown = (value - 64) / 63 * wheelSlowdownMax
     if slowdown > 0:
         leftWheelSlowdown = slowdown
         rightWheelSlowdown = 0
     else:
         leftWheelSlowdown = 0
         rightWheelSlowdown = -slowdown
-    updateWheelSpeeds()
+    update_wheel_speeds()
 
-def dremelJointPosHandler(addr, tags, data, source):
+def dremel_joint_pos_handler(address, *args):
     global dxlIO, dremelJointPosMin, dremelJointPosMax, dremelMotorId
-    value = data[0] + 0.0
-    pos = value/127 * (dremelJointPosMax - dremelJointPosMin) + dremelJointPosMin
+    value = args[0] + 0.0
+    pos = value / 127 * (dremelJointPosMax - dremelJointPosMin) + dremelJointPosMin
     dxlIO.set_goal_position({dremelMotorId: -pos})
 
-def dremelJointSpeedHandler(addr, tags, data, source):
+def dremel_joint_speed_handler(address, *args):
     global dxlIO, dremelJointSpeedMin, dremelJointSpeedMax, dremelMotorId
-    value = data[0] + 0.0
-    speed = value/127 * (dremelJointSpeedMax - dremelJointSpeedMin) + dremelJointSpeedMin
+    value = args[0] + 0.0
+    speed = value / 127 * (dremelJointSpeedMax - dremelJointSpeedMin) + dremelJointSpeedMin
     dxlIO.set_moving_speed({dremelMotorId: speed})
 
-def stopHandler(addr, tags, data, source):
-    dxlIO.set_moving_speed({leftWheelMotorId: 0, rightWheelMotorId : 0})
+def stop_handler(address, *args):
+    dxlIO.set_moving_speed({leftWheelMotorId: 0, rightWheelMotorId: 0})
 
-def leftWheelSpeedHandler(addr, tags, data, source):
-    dxlIO.set_moving_speed({leftWheelMotorId: data[0]})
+def left_wheel_speed_handler(address, *args):
+    dxlIO.set_moving_speed({leftWheelMotorId: args[0]})
 
-def rightWheelSpeedHandler(addr, tags, data, source):
-    dxlIO.set_moving_speed({rightWheelMotorId: data[0]})
+def right_wheel_speed_handler(address, *args):
+    dxlIO.set_moving_speed({rightWheelMotorId: args[0]})
 
-
-
-
-def updateWheelSpeeds():
-    global dxlIO, wheelSpeed, leftWheelSlowdown, rightWheelSlowdown, leftWheelMotorId, rightWheelMotorId
-    leftWheelSpeed = wheelSpeed * (1 - leftWheelSlowdown)
-    rightWheelSpeed = -wheelSpeed * (1 - rightWheelSlowdown)
-    dxlIO.set_moving_speed({leftWheelMotorId: leftWheelSpeed, rightWheelMotorId: rightWheelSpeed})
-
+def update_wheel_speeds():
+    leftSpeed = wheelSpeed * (1 - leftWheelSlowdown)
+    rightSpeed = wheelSpeed * (1 - rightWheelSlowdown)
+    dxlIO.set_moving_speed({leftWheelMotorId: leftSpeed, rightWheelMotorId: rightSpeed})
 
 def app():
-    # Init Dynamixel connection
-    global dxlIO, foundIds
+    global dxlIO
     ports = pypot.dynamixel.get_available_ports()
     if not ports:
         raise IOError('No port available.')
-    port = ports[0]
-    dxlIO = pypot.dynamixel.DxlIO(port)
-    print 'Connected DxLIO'
-    # print 'Found Motors with IDs: ' 
-    # print dxlIO.scan()
-    # Setup motors
-    # dxlIO.enable_torque([leftWheelMotorId, rightWheelMotorId]) #, dremelMotorId])
-    dxlIO.enable_torque([leftWheelMotorId, rightWheelMotorId])
-    # dxlIO.set_moving_speed({dremelMotorId: dremelJointSpeedMin})
-    print 'Motors Set Up'
 
-    # Init OSC server
-    simpleOSC.initOSCServer(receiveAddress, receivePort)
-    simpleOSC.setOSCHandler('/wheelspeed', wheelSpeedHandler)
-    simpleOSC.setOSCHandler('/rightwheelspeed', rightWheelSpeedHandler)
-    simpleOSC.setOSCHandler('/leftwheelspeed', leftWheelSpeedHandler)
-    simpleOSC.setOSCHandler('/wheelslowdown', wheelSlowdownHandler)
-    simpleOSC.setOSCHandler('/dremeljointpos', dremelJointPosHandler)
-    simpleOSC.setOSCHandler('/dremeljointspeed', dremelJointSpeedHandler)
-    simpleOSC.setOSCHandler('/stop', stopHandler)
-    simpleOSC.startOSCServer()
-    # Enter infinite loop to be able to catch KeyboardInterrupt
+    dxlIO = pypot.dynamixel.DxlIO(ports[0])
+    ids = dxlIO.scan([leftWheelMotorId, rightWheelMotorId, dremelMotorId])
+    if len(ids) < 3:
+        raise IOError('Not all motors are connected.')
+
+    dispatch = dispatcher.Dispatcher()
+    dispatch.map("/wheelspeed", wheel_speed_handler)
+    dispatch.map("/wheelslowdown", wheel_slowdown_handler)
+    dispatch.map("/dremelpos", dremel_joint_pos_handler)
+    dispatch.map("/dremelspeed", dremel_joint_speed_handler)
+    dispatch.map("/stop", stop_handler)
+    dispatch.map("/leftwheelspeed", left_wheel_speed_handler)
+    dispatch.map("/rightwheelspeed", right_wheel_speed_handler)
+    dispatch.map("/sleepdata", handle_sleep_data)
+
+    server = osc_server.ThreadingOSCUDPServer((receiveAddress, receivePort), dispatch)
+    print(f"Serving on {server.server_address}")
+
     try:
-        while True:
-            time.sleep(0)
+        server.serve_forever()
     except KeyboardInterrupt:
-        simpleOSC.closeOSC()
+        print("Server stopped.")
 
-# Launch the app
-if __name__ == '__main__': app()
+if __name__ == '__main__':
+    app()
