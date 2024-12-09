@@ -10,7 +10,7 @@ def debug_motor():
 
     print(f"Available ports: {ports}")
 
-    with pypot.dynamixel.DxlIO(ports[0], baudrate=57600) as dxl_io:
+    with pypot.dynamixel.DxlIO(ports[0], baudrate=1000000) as dxl_io:
         print("Scanning for motors...")
         ids = dxl_io.scan(range(1, 253))
         print(f"Detected motor IDs: {ids}")
